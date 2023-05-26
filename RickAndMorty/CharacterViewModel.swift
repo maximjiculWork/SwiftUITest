@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 import Combine
 
-struct Character: Decodable, Identifiable {
+struct Character: Codable, Identifiable, Equatable {
     let id: String
     let name: String
     let image: URL
@@ -10,25 +10,29 @@ struct Character: Decodable, Identifiable {
     let gender: CharacterGender
     let location: CharacterLocation
     let episode: [Episode]
+    
+    static func == (lhs: Character, rhs: Character) -> Bool {
+        return lhs.id == rhs.id && lhs.name == rhs.name && lhs.image == rhs.image && lhs.status == rhs.status && lhs.gender == rhs.gender && lhs.location == rhs.location && lhs.episode == rhs.episode
+    }
 }
 
-struct CharacterLocation: Codable {
+struct CharacterLocation: Codable, Equatable {
     let name: String
 }
 
-struct Episode: Codable, Identifiable {
+struct Episode: Codable, Identifiable, Equatable {
     let id: String
     let name: String
     let episode: String
 }
 
-enum CharacterStatus: String, CaseIterable, Decodable {
+enum CharacterStatus: String, CaseIterable, Codable {
     case alive = "Alive"
     case dead = "Dead"
     case unknown = "unknown"
 }
 
-enum CharacterGender: String, CaseIterable, Decodable {
+enum CharacterGender: String, CaseIterable, Codable {
     case male = "Male"
     case female = "Female"
     case genderless = "Genderless"
@@ -36,28 +40,47 @@ enum CharacterGender: String, CaseIterable, Decodable {
 }
 
 struct PageInfo: Codable {
-    let next: Int
+    let next: Int?
 }
 
-struct ResponseData: Decodable {
+struct ResponseData: Codable {
     let data: DataContainer
 }
 
-struct DataContainer: Decodable {
+struct DataContainer: Codable {
     let characters: CharacterList
 }
 
-struct CharacterList: Decodable {
+struct CharacterList: Codable {
     let results: [Character]
     let info: PageInfo
 }
 
+protocol Networking {
+    func fetchData(from url: URL) -> AnyPublisher<Data, Error>
+}
+
+class URLSessionNetworking: Networking {
+    func fetchData(from url: URL) -> AnyPublisher<Data, Error> {
+        return URLSession.shared.dataTaskPublisher(for: url)
+            .map(\.data)
+            .mapError { error -> Error in
+                return error
+            }
+            .eraseToAnyPublisher()
+    }
+}
 
 class CharacterViewModel: ObservableObject {
     @Published var characters: [Character] = []
     
     private var cancellable: AnyCancellable?
     public var nextPage: Int?
+    private let networking: Networking
+       
+       init(networking: Networking = URLSessionNetworking()) {
+           self.networking = networking
+       }
     
     func fetchCharacters() {
         let query = """
@@ -109,10 +132,10 @@ class CharacterViewModel: ObservableObject {
                 do {
                     let decoder = JSONDecoder()
                     let responseData = try decoder.decode(ResponseData.self, from: data)
+                    // Update the next page value
                     self?.nextPage = responseData.data.characters.info.next
                     self?.characters.append(contentsOf: responseData.data.characters.results)
 
-                    
                     print("responseData: \(responseData)")
                 } catch {
                     print("Error decoding response: \(error)")
