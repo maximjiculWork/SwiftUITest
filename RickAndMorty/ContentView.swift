@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var isFilterVisible: Bool = false
     
     @StateObject var viewModel = CharacterViewModel()
+    @EnvironmentObject var coordinator: Coordinator<AppRouter>
     
     var filteredCharacters: [Character] {
         var filtered = viewModel.characters
@@ -25,85 +26,18 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                HStack(alignment: .center) {
-                    TextField("Search", text: $searchText)
-                        .padding()
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    Button(action: {
-                        isFilterVisible.toggle()
-                    }) {
-                        Image(systemName: isFilterVisible ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle").resizable()
-                            .frame(width: 25, height: 25)
-                    }
-                }
-                .padding([.leading, .bottom, .trailing])
+                TopBarSearch(searchText: $searchText, isFilterVisible: $isFilterVisible)
                 
                 if isFilterVisible {
-                    VStack(alignment: .leading) {
-                        Text("Status")
-                        Picker("Status", selection: $selectedStatus) {
-                            ForEach(CharacterStatus.allCases, id: \.self) { status in
-                                Text(status.rawValue.capitalized)
-                            }
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
-                    }
-                    .padding([.leading, .bottom, .trailing])
+                    FilterPicker(title: "Status", options: CharacterStatus.allCases, selectedValue: $selectedStatus)
                     
-                    VStack(alignment: .leading) {
-                        Text("Gender")
-                        Picker("Gender", selection: $selectedGender) {
-                            ForEach(CharacterGender.allCases, id: \.self) { gender in
-                                Text(gender.rawValue.capitalized)
-                            }
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
-                    }
-                    .padding([.leading, .bottom, .trailing])
+                    FilterPicker(title: "Gender", options: CharacterGender.allCases, selectedValue: $selectedGender)
                 }
                 
                 if filteredCharacters.isEmpty {
-                    Spacer()
-                    Text("No characters found")
-                        .foregroundColor(.gray)
-                        .padding(.vertical)
-                    Spacer()
+                    NoData(noDataText: "No characters found")
                 } else {
-                    List(filteredCharacters) { character in
-                        NavigationLink(destination: DetailView(character: character)) {
-                            HStack {
-                                AsyncImage(url: character.image) { image in
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 50, height: 50)
-                                } placeholder: {
-                                    ProgressView()
-                                        .frame(width: 50, height: 50)
-                                }
-                                
-                                VStack(alignment: .leading) {
-                                    Text(character.name)
-                                    
-                                    VStack(alignment: .leading) {
-                                        Text("Status: \(character.status.rawValue.capitalized)")
-                                            .font(.caption)
-                                        Text("Gender: \(character.gender.rawValue.capitalized)")
-                                            .font(.caption)
-                                        Text("Location: \(character.location.name.capitalized)")
-                                            .font(.caption)
-                                    }
-                                }
-                                .onAppear {
-                                    if character.id == viewModel.characters.last?.id && viewModel.nextPage != nil {
-                                        viewModel.fetchCharacters()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .listStyle(PlainListStyle())
+                    CharactersListView(characters: filteredCharacters, viewModel: viewModel)
                 }
             }
             .navigationBarTitle("Characters")

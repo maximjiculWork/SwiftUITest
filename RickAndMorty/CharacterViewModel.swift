@@ -2,76 +2,7 @@ import Foundation
 import SwiftUI
 import Combine
 
-struct Character: Codable, Identifiable, Equatable {
-    let id: String
-    let name: String
-    let image: URL
-    let status: CharacterStatus
-    let gender: CharacterGender
-    let location: CharacterLocation
-    let episode: [Episode]
-    
-    static func == (lhs: Character, rhs: Character) -> Bool {
-        return lhs.id == rhs.id && lhs.name == rhs.name && lhs.image == rhs.image && lhs.status == rhs.status && lhs.gender == rhs.gender && lhs.location == rhs.location && lhs.episode == rhs.episode
-    }
-}
-
-struct CharacterLocation: Codable, Equatable {
-    let name: String
-}
-
-struct Episode: Codable, Identifiable, Equatable {
-    let id: String
-    let name: String
-    let episode: String
-}
-
-enum CharacterStatus: String, CaseIterable, Codable {
-    case alive = "Alive"
-    case dead = "Dead"
-    case unknown = "unknown"
-}
-
-enum CharacterGender: String, CaseIterable, Codable {
-    case male = "Male"
-    case female = "Female"
-    case genderless = "Genderless"
-    case unknown = "unknown"
-}
-
-struct PageInfo: Codable {
-    let next: Int?
-}
-
-struct ResponseData: Codable {
-    let data: DataContainer
-}
-
-struct DataContainer: Codable {
-    let characters: CharacterList
-}
-
-struct CharacterList: Codable {
-    let results: [Character]
-    let info: PageInfo
-}
-
-protocol Networking {
-    func fetchData(from url: URL) -> AnyPublisher<Data, Error>
-}
-
-class URLSessionNetworking: Networking {
-    func fetchData(from url: URL) -> AnyPublisher<Data, Error> {
-        return URLSession.shared.dataTaskPublisher(for: url)
-            .map(\.data)
-            .mapError { error -> Error in
-                return error
-            }
-            .eraseToAnyPublisher()
-    }
-}
-
-class CharacterViewModel: ObservableObject {
+final class CharacterViewModel: CharacterViewModelProtocol {
     @Published var characters: [Character] = []
     
     private var cancellable: AnyCancellable?
